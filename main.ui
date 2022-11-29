@@ -147,7 +147,70 @@
       <height>261</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0,9,1">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QSpinBox" name="spinBox_2">
+         <property name="prefix">
+          <string>t_count: </string>
+         </property>
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="value">
+          <number>170</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSlider" name="horizontalSlider_tcount">
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="singleStep">
+          <number>5</number>
+         </property>
+         <property name="pageStep">
+          <number>10</number>
+         </property>
+         <property name="value">
+          <number>170</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <item>
+        <widget class="QSpinBox" name="spinBox_3">
+         <property name="prefix">
+          <string>best_thres: </string>
+         </property>
+         <property name="value">
+          <number>5</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSlider" name="horizontalSlider_best_thres">
+         <property name="pageStep">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>5</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
      <item>
       <widget class="QLabel" name="label_edge">
        <property name="text">
@@ -164,7 +227,7 @@
      </item>
     </layout>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>280</x>
@@ -201,96 +264,6 @@
         <widget class="QPushButton" name="pushButton_Circular">
          <property name="text">
           <string>Circular</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>300</y>
-      <width>281</width>
-      <height>86</height>
-     </rect>
-    </property>
-    <layout class="QVBoxLayout" name="verticalLayout_6">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="4,7">
-       <item>
-        <widget class="QSpinBox" name="spinBox_2">
-         <property name="prefix">
-          <string>t_count: </string>
-         </property>
-         <property name="maximum">
-          <number>1000</number>
-         </property>
-         <property name="value">
-          <number>300</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSlider" name="horizontalSlider_tcount">
-         <property name="maximum">
-          <number>1000</number>
-         </property>
-         <property name="singleStep">
-          <number>5</number>
-         </property>
-         <property name="pageStep">
-          <number>10</number>
-         </property>
-         <property name="value">
-          <number>300</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="4,7">
-       <item>
-        <widget class="QSpinBox" name="spinBox_3">
-         <property name="prefix">
-          <string>erosion: </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSlider" name="horizontalSlider_erosion">
-         <property name="pageStep">
-          <number>1</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="4,7">
-       <item>
-        <widget class="QSpinBox" name="spinBox_4">
-         <property name="prefix">
-          <string>dilation: </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSlider" name="horizontalSlider_dilation">
-         <property name="pageStep">
-          <number>1</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -362,38 +335,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>horizontalSlider_erosion</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>spinBox_3</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>179</x>
-     <y>351</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>38</x>
-     <y>351</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>horizontalSlider_dilation</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>spinBox_4</receiver>
-   <slot>setValue(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>179</x>
-     <y>373</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>38</x>
-     <y>373</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>spinBox_2</sender>
    <signal>valueChanged(int)</signal>
    <receiver>horizontalSlider_tcount</receiver>
@@ -410,34 +351,34 @@
    </hints>
   </connection>
   <connection>
-   <sender>spinBox_3</sender>
+   <sender>horizontalSlider_best_thres</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>horizontalSlider_erosion</receiver>
+   <receiver>spinBox_3</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>71</x>
-     <y>363</y>
+     <x>200</x>
+     <y>453</y>
     </hint>
     <hint type="destinationlabel">
-     <x>212</x>
-     <y>363</y>
+     <x>74</x>
+     <y>453</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>spinBox_4</sender>
+   <sender>spinBox_3</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>horizontalSlider_dilation</receiver>
+   <receiver>horizontalSlider_best_thres</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>71</x>
-     <y>393</y>
+     <x>74</x>
+     <y>453</y>
     </hint>
     <hint type="destinationlabel">
-     <x>212</x>
-     <y>393</y>
+     <x>200</x>
+     <y>453</y>
     </hint>
    </hints>
   </connection>

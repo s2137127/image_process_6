@@ -1,15 +1,14 @@
 import math
 
-import matplotlib.pyplot as plt
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from mainui import Ui_MainWindow
 import cv2
 import numpy as np
-import time
 import pywt
-
-
+from numpy.linalg import inv
+from math import dist
+from os.path import basename
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -34,9 +33,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                        "Images (*.png *.BMP *.jpg *.JPG)")
 
         self.img = cv2.imread(self.img_path)  # 讀檔
-
-        height, width, channel = self.img.shape
-        qimg = QImage(self.img, width, height, 3 * width, QImage.Format_RGB888).rgbSwapped()
+        img = self.img.copy()
+        # self.img = self.img[:,:,0]
+        self.img = np.mean(self.img[:, :, :], axis=2).copy().astype(np.uint8)
+        height, width, channel = img.shape
+        qimg = QImage(img, width, height, 3 * width, QImage.Format_RGB888).rgbSwapped()
         self.label.setPixmap(QPixmap.fromImage(qimg))
         self.label.setScaledContents(True)
 
@@ -53,8 +54,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         h, status = cv2.findHomography(src_point, target_point, method=cv2.RANSAC)
         im_out = cv2.warpPerspective(self.img.copy(), h, (512, 512))
         # im_out.transpose(1,0,2)
-        qimg = QImage(im_out.data, im_out.shape[1], im_out.shape[0], 3 * im_out.shape[1],
-                      QImage.Format_RGB888).rgbSwapped()
+        qimg = QImage(im_out.data, im_out.shape[1], im_out.shape[0], im_out.shape[1],
+                      QImage.Format_Grayscale8)
         self.label_geo.setPixmap(QPixmap.fromImage(qimg))
         self.label_geo.setScaledContents(True)
 
@@ -69,8 +70,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     img_output[i, j] = self.img[(i + offset_y) % self.img.shape[0], (j + offset_x) % self.img.shape[1]]
                 else:
                     img_output[i, j] = 0
-        qimg = QImage(img_output.data, img_output.shape[1], img_output.shape[0], 3 * img_output.shape[1],
-                      QImage.Format_RGB888).rgbSwapped()
+        qimg = QImage(img_output.data, img_output.shape[1], img_output.shape[0],  img_output.shape[1],
+                      QImage.Format_Grayscale8)
         self.label_geo.setPixmap(QPixmap.fromImage(qimg))
         self.label_geo.setScaledContents(True)
 
@@ -122,9 +123,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return result
 
     def pushButton_Circular_clicked(self):
-        img = np.mean(self.img[:,:,:],axis=2).copy()
+        # img = np.mean(self.img[:,:,:],axis=2).copy()
 
-        new = self._transform(img)
+        new = self._transform(self.img)
 
         new = new.astype(np.uint8)
         qimg = QImage(new.data, new.shape[1], new.shape[0], QImage.Format_Grayscale8)
@@ -165,42 +166,84 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for i in range(len(cooef[0]) - 1):
                 # The first values in each decomposition is the apprximation values of the top level
                 if i == 0:
-                    # print("1")
                     tmp = np.array([cooef[j][0] for j in range(len(cooef))]).squeeze().squeeze().tolist()
 
                     fusedCooef.append(np.max(tmp, axis=0))
 
                 else:
-
                     tmp = np.array([cooef[j][i] for j in range(len(cooef))]).squeeze()
-                    # print(cooef[j][i])
-                    # print(t mp)
                     tmp = np.max(tmp, axis=0).squeeze().tolist()
-
                     fusedCooef.append(tmp)
-
+            # print(fusedCooef)
             fusedImage = pywt.waverec2(fusedCooef, wavelet)
+            # print(fusedImage)
             fusedImage *= 255 / np.max(fusedImage)
             fusedImage = fusedImage.astype(np.uint8)
         else:
             return 0
-
         qimg = QImage(fusedImage.data, fusedImage.shape[1], fusedImage.shape[0], QImage.Format_Grayscale8)
         self.label_wave_out.setPixmap(QPixmap.fromImage(qimg))
         self.label_wave_out.setScaledContents(True)
-    def get_area_perimeter(self,edge_image):
+    def get_rec_point(self,edge_image,rec_idx):
         thetas = np.arange(0, 180, step=1)
         d = np.sqrt(np.square(edge_image.shape[0]) + np.square(edge_image.shape[1]))
         drho = (2 * d) / 180
         rhos = np.arange(-d, d, step=drho)
+        edge_height, edge_width = edge_image.shape[:2]
+        edge_height_half, edge_width_half = edge_height / 2, edge_width / 2
+        point_arr = []
+        for i in range(len(rec_idx)):
+            idx = rec_idx[i]
+            y, x = self.best[idx]
+            rho = rhos[y]
+            theta = thetas[x]
+            a = np.cos(np.deg2rad(theta))
+            b = np.sin(np.deg2rad(theta))
+
+            x0 = (a * rho) + edge_width_half
+            y0 = (b * rho) + edge_height_half
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            m = (y1 - y0) / (x1 - x0)
+            # print(x0)
+            mat0 = np.array([m * x0 - y0])
+            mat1 = np.array([m, -1])
+            idx = rec_idx[(i + 1) % 4]
+            y, x = self.best[idx]
+            rho = rhos[y]
+            theta = thetas[x]
+            a = np.cos(np.deg2rad(theta))
+            b = np.sin(np.deg2rad(theta))
+
+            x0 = (a * rho) + edge_width_half
+            y0 = (b * rho) + edge_height_half
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            m = (y1 - y0) / (x1 - x0)
+            mat0_ = np.array([m * x0 - y0])
+            mat1_ = np.array([m, -1])
+            mat0 = np.concatenate([mat0, mat0_]).reshape(2, 1)
+            mat1 = np.concatenate([mat1, mat1_]).reshape(2, 2)
+
+            p = np.dot(inv(mat1), mat0).squeeze()
+            p = p.astype(int)
+            p = (p[0], p[1])
+            point_arr.append(p)
+        return point_arr
+    def get_area(self,point_arr):
+        x = np.array([point_arr[i][0] for i in range(4)])
+        y = np.array([point_arr[i][1] for i in range(4)])
+        i = np.arange(len(x))
+        Area = np.abs(np.sum(x[i - 1] * y[i] - x[i] * y[i - 1]) * 0.5) * 0.25
+        return Area*0.25
+    def get_area_perimeter(self,image):
+        thetas = np.arange(0, 180, step=1)
         angle = []
         for line in self.best:
             y, x = line
-            # rho = rhos[y]
             theta = thetas[x]
             a = np.tan(np.deg2rad(theta))
             angle.append(a)
-        print(angle)
         rec1 = []
         rec1_idx = []
         for j in range(len(angle)):
@@ -210,10 +253,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 rec1.append(angle[j])
                 rec1_idx.append(j)
                 break
-        # print("11")
-        print(rec1)
         for i in range(1,3):
-            # print("1")
             for j in range(len(angle)):
                 if j in rec1_idx:
                     continue
@@ -221,8 +261,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if rec1[i] * angle[j]<-0.7 and rec1[i] * angle[j] >-1.1:
                     rec1.append(angle[j])
                     rec1_idx.append(j)
-        print(rec1_idx)
+        rec2_idx = [i for i in range(len(self.best)) if i not in rec1_idx]
+        point1_arr = self.get_rec_point(image,rec1_idx)
+        point2_arr = self.get_rec_point(image, rec2_idx)
+        #get perimeter
+        perimeter1 = 0
+        perimeter2 = 0
+        print("1")
+        for i in range(4):
+            perimeter1 += dist(point1_arr[i],point1_arr[(i+1)%4])
+        perimeter1 *= 0.5
+        for i in range(4):
+            perimeter2 += dist(point2_arr[i],point2_arr[(i+1)%4])
+        perimeter2 *= 0.5
+        #get area
+        Area1 = self.get_area(point1_arr)
+        Area2 = self.get_area(point2_arr)
+        org = np.mean(point1_arr,axis = 0).astype(int)
+        org[0] -= 100
+        org[1] -= 100
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        fontScale = 1
+        color = (255, 0, 0)
+        thickness = 2
+        #put rec informations in image
+        cv2.putText(image,"Area: %.2f" % Area1,org,font,fontScale,color,thickness,cv2.LINE_AA)
+        org[1] += 50
+        cv2.putText(image, "perimeter: %.2f" % perimeter1, org, font, fontScale, color, thickness,cv2.LINE_AA)
+        org = np.mean(point2_arr, axis=0).astype(int)
+        org[0] -= 100
+        cv2.putText(image, "Area: %.2f" % Area2, org, font, fontScale, color, thickness, cv2.LINE_AA)
+        org[1] += 50
+        cv2.putText(image, "perimeter: %.2f" % perimeter2, org, font, fontScale, color, thickness, cv2.LINE_AA)
+
     def line_detection_vectorized(self,image, edge_image, num_rhos=180, num_thetas=180, t_count=500):
+        thres = self.horizontalSlider_best_thres.value()
         edge_height, edge_width = edge_image.shape[:2]
         edge_height_half, edge_width_half = edge_height / 2, edge_width / 2
         #
@@ -248,14 +321,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         )
         accumulator = np.transpose(accumulator)
         lines = np.argwhere(accumulator > t_count)
-        # rho_idxs, theta_idxs = lines[:, 0], lines[:, 1]
-        # r, t = rhos[rho_idxs], thetas[theta_idxs]
+
         self.best = []
         for line in lines:
             if len(self.best)>0:
                 app = 0
                 for i in self.best:
-                    if np.mean(np.abs(line[:]-i[:])) < 5:
+                    if np.mean(np.abs(line[:]-i[:])) < thres:
                         break
                     else:
                          app += 1
@@ -277,7 +349,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             x2 = int(x0 - 1000 * (-b))
             y2 = int(y0 - 1000 * (a))
             # print(x0,y0)
-            cv2.line(image, (x1, y1), (x2, y2), (0, 200, 0), 5)
+            cv2.line(image, (x1, y1), (x2, y2), (0, 200, 0), 2)
 
         return accumulator, rhos, thetas,image
     def pushbottom_edge_clicked(self):
@@ -286,31 +358,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                   "./",
                                                   "Images (*.png *.bmp *.jpg *.JPG)")
         img = cv2.imread(img_path)  # 讀檔
-        ero_itr = self.horizontalSlider_erosion.value()
-        dil_itr = self.horizontalSlider_dilation.value()
+
         t_count = self.horizontalSlider_tcount.value()
         img1 = img[:, :, 0].copy()
         s = 2
         origin = np.zeros((img1.shape[0] + 2 * s, img.shape[1] + 2 * s), np.uint8)
         origin[s:-s, s:-s] = img1.copy()
-        # new = np.zeros_like(img1)
-            # img = np.zeros_like(img, np.uint8)
         new = cv2.GaussianBlur(img1, (3, 3), 1)
         new = cv2.Canny(new, 100, 200)
-        # new = cv2.dilate(
-        #     new,
-        #     cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
-        #     iterations=dil_itr
-        # )
-        # new = cv2.erode(
-        #     new,
-        #     cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
-        #     iterations=ero_itr
-        # )
-        # cv2.imshow('new',new)
-        # cv2.waitKey(0)
         accumulator, thetas, rhos,img = self.line_detection_vectorized(img,new,t_count = t_count)
-        self.get_area_perimeter(new)
+        if basename(img_path) == 'rects.bmp':
+            self.get_area_perimeter(img)
         qimg = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*3,QImage.Format_RGB888)
         self.label_edge.setPixmap(QPixmap.fromImage(qimg))
         self.label_edge.setScaledContents(True)
