@@ -53,7 +53,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
              [mid[1] - short, mid[0] + high]])
         h, status = cv2.findHomography(src_point, target_point, method=cv2.RANSAC)
         im_out = cv2.warpPerspective(self.img.copy(), h, (512, 512))
-        # im_out.transpose(1,0,2)
         qimg = QImage(im_out.data, im_out.shape[1], im_out.shape[0], im_out.shape[1],
                       QImage.Format_Grayscale8)
         self.label_geo.setPixmap(QPixmap.fromImage(qimg))
@@ -75,14 +74,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.label_geo.setPixmap(QPixmap.fromImage(qimg))
         self.label_geo.setScaledContents(True)
 
-    def _pixel_coordinates_to_unit(self,coordinate, max_value):
+    def _pixel_coordinates_to_unit(self,coordinate, max_value):#影像座標轉成單位長度座標
         return coordinate / max_value * 2 - 1
 
-    def _one_coordinates_to_pixels(self,coordinate, max_value):
+    def _one_coordinates_to_pixels(self,coordinate, max_value):#單位長度座標轉影像座標
         return (coordinate + 1) / 2 * max_value
 
-    def _elliptical_square_to_disc(self,u, v):
-        # return x * math.sqrt(1.0 - y * y / 2.0), y * math.sqrt(1.0 - x * x / 2.0)
+    def _elliptical_square_to_disc(self,u, v):#方形座標轉圓形的座標轉化
         u2 = u * u
         v2 = v * v
         r2 = u2 + v2
@@ -100,7 +98,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         x = 0.5 * math.sqrt(termx1) - 0.5 * math.sqrt(termx2)
         y = 0.5 * math.sqrt(termy1) - 0.5 * math.sqrt(termy2)
         return x, y
-    def _transform(self,inp):
+    def _transform(self,inp):#將方形影像map到圓形影像
         result = np.zeros_like(inp)
         for x, row in enumerate(inp):
 
@@ -159,23 +157,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.img_list is not None and len(self.img_list) >= 2:
             scale = self.spinBox.value()
             wavelet = 'db1'
-            cooef = [pywt.wavedec2(img.copy(), wavelet, level=scale) for img in self.img_list]
+            cooef = [pywt.wavedec2(img.copy(), wavelet, level=scale) for img in self.img_list]#取各項的係數
 
             fusedCooef = []
 
             for i in range(len(cooef[0]) - 1):
-                # The first values in each decomposition is the apprximation values of the top level
-                if i == 0:
+                if i == 0:#估計值
                     tmp = np.array([cooef[j][0] for j in range(len(cooef))]).squeeze().squeeze().tolist()
 
                     fusedCooef.append(np.max(tmp, axis=0))
 
-                else:
+                else:#取及大值作為新影像的係數
                     tmp = np.array([cooef[j][i] for j in range(len(cooef))]).squeeze()
                     tmp = np.max(tmp, axis=0).squeeze().tolist()
                     fusedCooef.append(tmp)
             # print(fusedCooef)
-            fusedImage = pywt.waverec2(fusedCooef, wavelet)
+            fusedImage = pywt.waverec2(fusedCooef, wavelet)#轉為合成影像
             # print(fusedImage)
             fusedImage *= 255 / np.max(fusedImage)
             fusedImage = fusedImage.astype(np.uint8)
@@ -184,7 +181,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         qimg = QImage(fusedImage.data, fusedImage.shape[1], fusedImage.shape[0], QImage.Format_Grayscale8)
         self.label_wave_out.setPixmap(QPixmap.fromImage(qimg))
         self.label_wave_out.setScaledContents(True)
-    def get_rec_point(self,edge_image,rec_idx):
+    def get_rec_point(self,edge_image,rec_idx):#取頂底座標
         thetas = np.arange(0, 180, step=1)
         d = np.sqrt(np.square(edge_image.shape[0]) + np.square(edge_image.shape[1]))
         drho = (2 * d) / 180
@@ -220,6 +217,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             x1 = int(x0 + 1000 * (-b))
             y1 = int(y0 + 1000 * (a))
             m = (y1 - y0) / (x1 - x0)
+            #將兩線的交點求出
             mat0_ = np.array([m * x0 - y0])
             mat1_ = np.array([m, -1])
             mat0 = np.concatenate([mat0, mat0_]).reshape(2, 1)
@@ -230,13 +228,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             p = (p[0], p[1])
             point_arr.append(p)
         return point_arr
-    def get_area(self,point_arr):
+    def get_area(self,point_arr):#利用頂點求面積
         x = np.array([point_arr[i][0] for i in range(4)])
         y = np.array([point_arr[i][1] for i in range(4)])
         i = np.arange(len(x))
         Area = np.abs(np.sum(x[i - 1] * y[i] - x[i] * y[i - 1]) * 0.5) * 0.25
         return Area*0.25
-    def get_area_perimeter(self,image):
+    def get_area_perimeter(self,image):#求周長&面積
         thetas = np.arange(0, 180, step=1)
         angle = []
         for line in self.best:
@@ -246,6 +244,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             angle.append(a)
         rec1 = []
         rec1_idx = []
+        #若兩線的夾角接近90度則將兩線視為同個方形的兩個邊，並將其中一個方形的四邊index找出
         for j in range(len(angle)):
             if angle[0] * angle[j] < -0.6 and angle[0] * angle[j] > -1.1:
                 rec1.append(angle[0])
@@ -261,6 +260,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if rec1[i] * angle[j]<-0.7 and rec1[i] * angle[j] >-1.1:
                     rec1.append(angle[j])
                     rec1_idx.append(j)
+        #求出第二個方形的四邊的index
         rec2_idx = [i for i in range(len(self.best)) if i not in rec1_idx]
         point1_arr = self.get_rec_point(image,rec1_idx)
         point2_arr = self.get_rec_point(image, rec2_idx)
@@ -295,6 +295,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         cv2.putText(image, "perimeter: %.2f" % perimeter2, org, font, fontScale, color, thickness, cv2.LINE_AA)
 
     def line_detection_vectorized(self,image, edge_image, num_rhos=180, num_thetas=180, t_count=500):
+
         thres = self.horizontalSlider_best_thres.value()
         edge_height, edge_width = edge_image.shape[:2]
         edge_height_half, edge_width_half = edge_height / 2, edge_width / 2
@@ -313,16 +314,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         edge_points = edge_points - np.array([[edge_height_half, edge_width_half]])
         #
         rho_values = np.matmul(edge_points, np.array([sin_thetas, cos_thetas]))
-        #
+        #找到所有線
         accumulator, theta_vals, rho_vals = np.histogram2d(
             np.tile(thetas, rho_values.shape[0]),
             rho_values.ravel(),
             bins=[thetas, rhos]
         )
         accumulator = np.transpose(accumulator)
+        # 取出所有滿足條件的線
         lines = np.argwhere(accumulator > t_count)
 
         self.best = []
+        #過濾太過相近的線，將同一個邊緣的其他霍夫直線過濾掉
         for line in lines:
             if len(self.best)>0:
                 app = 0
@@ -335,6 +338,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         self.best.append(line)
             else:
                 self.best.append(line)
+        #畫線道影像中
         for line in self.best:
             y, x = line
             rho = rhos[y]
@@ -352,7 +356,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             cv2.line(image, (x1, y1), (x2, y2), (0, 200, 0), 2)
 
         return accumulator, rhos, thetas,image
-    def pushbottom_edge_clicked(self):
+    def pushbottom_edge_clicked(self):#霍夫轉換
         img_path, _ = QFileDialog.getOpenFileName(self,
                                                   "Open file",
                                                   "./",
@@ -367,6 +371,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         new = cv2.GaussianBlur(img1, (3, 3), 1)
         new = cv2.Canny(new, 100, 200)
         accumulator, thetas, rhos,img = self.line_detection_vectorized(img,new,t_count = t_count)
+        #只對特定圖片進行面積及周長計算
         if basename(img_path) == 'rects.bmp':
             self.get_area_perimeter(img)
         qimg = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*3,QImage.Format_RGB888)
